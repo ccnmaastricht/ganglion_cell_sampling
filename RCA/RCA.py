@@ -3,6 +3,8 @@ import cv2
 import math
 import os
 import matplotlib.pyplot as plt
+from tkinter import Tk
+from tkinter import filedialog as fd
 from PIL import Image
 from scipy.sparse import lil_matrix as sparse
 from scipy.special import lambertw
@@ -45,11 +47,19 @@ class RetinalCompression:
     def load_image(*im):
         # Method that opens a dialogue window to select an image. The dimensions for the image are stored as class
         # fields so that they can be used later on.
-        if im:
-            file = im[0]
-        else:
-            print('No file')
-        image = cv2.imread(file, 3)
+        file = None
+        try:
+            if im[0]:
+                file = im[0]
+            else:
+                Tk().withdraw()
+                file = fd.askopenfilename()
+                if not file:
+                    print("No file selected")
+                    raise SystemExit(0)
+            image = cv2.imread(file, 3)
+        except ValueError:
+            image = im[0]
         [r, c, d] = image.shape  # Determine dimensions of the selected image (pixel space)
         dif = r - c  # Determine the difference between rows and columns. Used for zero-padding of non-
         s = dif / 2
@@ -66,14 +76,6 @@ class RetinalCompression:
         print(image.shape)
         return image
 
-        #if dif < 0:
-        #    # Zero padding in y-direction (if needed) to make the image a squared image.
-        #    image = np.pad(image, [-dif / 2, 0], mode='constant')
-        #elif dif > 0:
-        #    # Zero padding in x-direction (if needed) to make the image a squared image.
-        #    image = np.pad(image, [0, dif / 2], mode='constant')
-
-
     @staticmethod
     def show_image(img):
         # Parameters: Im = array_like
@@ -86,6 +88,13 @@ class RetinalCompression:
         cv2.destroyAllWindows()
 
     @staticmethod
+    def save_im(out_path, f_name, im, col):
+        if not os.path.exists(out_path):
+            os.mkdir(out_path)
+        plt.imsave("{}{}".format(out_path, f_name), im, cmap='gray', vmin=0,
+                   vmax=255)
+
+    @staticmethod
     def mask(im, mask, average=0):
         mask = np.reshape(mask, [im.shape[0], im.shape[1]])
         if im.shape[2] == 3:
@@ -96,19 +105,20 @@ class RetinalCompression:
             im2 = np.multiply(im, mask)
         return im2
 
-    def distort_image(self, image, fov=20, out_size=256, decomp=0, type=1, series=0):
-        # Parameters:
+    def distort_image(self, image, fov=20, out_size=256, inv=0, type=1, series=0):
+        # Arguments:
         #     image = array_like
-        #               Numpy array containing an image
+        #               Numpy array containing an image, containing a link to an image, or is empty.
+        # 	            Leaving it empty will call up a GUI to manually select a file.
         #     fov = integer
-        #               Field of view coverage. Diameters in visual angle. When
+        #               Field of view coverage with distance in visual angle. When
         #               decompressing an image, it is advised that the value is set to the fov of the original image.
-        #               range[1, 100]
+        #               range=[1, 100]
         #     out_size = integer
         #               Determines the size of the output image in pixels. The value is
         #               the size of the output image on one axis. Output image is always a square image. When
         #               decompressing an image, it is advised that the value is set to the size of the original image.
-        #     decomp = integer
+        #     inv = integer
         #               Set to 1 to get a decompression of a distorted input image. Set to 0 to have compression.
         #               range[0, 1]
         #     type = integer
@@ -131,7 +141,7 @@ class RetinalCompression:
         # inverse mapping approach in which each pixel in the new image is determined by taking it from the original
         # image. This method requires a inverted integrated cell density function.
 
-        if self.W is None:
+        if (self.W is None) or (series == 0):
 
             try:
                 [self.inR, self.inC, self.inD] = image.shape  # Determine dimensions of the selected image (pixel space)
@@ -157,9 +167,9 @@ class RetinalCompression:
             if type == 1:
                 n_cells = self.fi(e)
 
-            # Decomp determines decompression. If set to 1, it is assumed that the image is compressed already, and
+            # Inv determines decompression. If set to 1, it is assumed that the image is compressed already, and
             # should be normalized. If set to 0, it is assumed the image needs to be distorted.
-            if decomp == 0:
+            if inv == 0:
                 # How many degrees are modeled within a pixel of the image? This can be determined by dividing the
                 # visual angle of eccentricity by half the image dimension. This will be used to adjust the new radial
                 # distances for each pixel (expressed in degrees) to pixel distances.
@@ -169,7 +179,7 @@ class RetinalCompression:
                 # image will be from -n_cells to n_cells. The image pixels are expressed in number of total cells
                 # involved in processing the image up to each individual pixel.
                 t = np.linspace(-n_cells, n_cells, num=out_size)
-            elif decomp == 1:
+            elif inv == 1:
                 # When going from distorted image to normalized image, we have to take the inverse of the inverse, thus
                 # the regular integrated function. The new radial distances for each pixel will thus be given in the
                 # number of retinal cells. Therefore, this has to be converted to number of pixels. This is done by
@@ -186,7 +196,7 @@ class RetinalCompression:
             ang = np.angle(x + y * 1j)
             rad = np.abs(x + y * 1j)
 
-            if decomp == 0:
+            if inv == 0:
                 # Calculate a mask that covers all pixel beyond the modeled fov coverage, for better visualization
                 # (optional)
                 msk = (rad <= n_cells)
@@ -199,7 +209,7 @@ class RetinalCompression:
                 # Use angle and new radial values to determine the x and y coordinates.
                 x_n = np.multiply(np.cos(ang), new_r) + self.inS / 2
                 y_n = np.multiply(np.sin(ang), new_r) + self.inS / 2
-            elif decomp == 1:
+            elif inv == 1:
                 # Calculate a mask that covers all pixel beyond the modeled fov coverage, for better visualization
                 # (optional)
                 msk = (rad <= fov)
@@ -251,23 +261,32 @@ class RetinalCompression:
             output = np.reshape(W.dot(image), (out_size, out_size))
         return output, msk
 
-    def series_dist(self, in_path, out_path, fov=20, out_size=256, decomp=0, type=1, delete=0, save=1, show=0, masking=1, average =0):
+    def single(self, image=None, out_path=None, fov=20, out_size=256, inv=0, type=1, show=1, masking=1, series=0):
+        image = self.load_image(image)
+        if show == 1:
+            self.show_image(image)
+        im2, msk = self.distort_image(image=image, fov=fov, out_size=out_size, inv=inv, type=type, series=series)
+        if masking == 1:
+            im3 = self.mask(im2, msk)
+        if show == 1:
+            self.show_image(im3)
+        if out_path:
+            self.save_im(im3, 'output.jpg', im3)
+        return im3
+
+    def series(self, in_path, out_path, fov=20, out_size=256, inv=0, type=1, show=0, masking=1, series=1):
         for i, f_name in enumerate(os.listdir(in_path)):
             print(" Working on image ", i+1)
             file = in_path + '/' + f_name
             img = RetinalCompression.load_image(file)
             if show == 1:
                 RetinalCompression.show_image(img)
-            img2, msk = RetinalCompression.distort_image(self, img, fov, out_size, decomp, type, series=1)
+            img2, msk = RetinalCompression.distort_image(self, image=img, fov=fov, out_size=out_size, inv=inv,
+                                                         type=type, series=series)
             if show == 1:
                 RetinalCompression.show_image(img2)
-            if delete == 1:
-                os.remove(file)
-            if save == 1:
-                print("{}/{}".format(out_path, f_name))
-                if masking == 1:
-                    if average == 0:
-                        plt.imsave("{}/{}".format(out_path, f_name), RetinalCompression.mask(img2, msk, average), cmap='gray', vmin=0, vmax=255)
-                else:
-                    plt.imsave("{}/{}".format(out_path, f_name), img2, cmap='gray', vmin=0, vmax=255)
+            if masking == 1:
+                img2 = RetinalCompression.mask(img2, msk)
+            print("{}/{}".format(out_path, f_name))
+            self.save_im(out_path, f_name, img2)
 
