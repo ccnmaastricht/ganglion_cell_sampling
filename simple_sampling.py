@@ -40,8 +40,9 @@ class RetinalCompression:
         num_pixels_out = self.size_out**2
 
         num_cells = self.fi(eccentricity)
-        cells_per_pixel = num_cells / radius_in
-        visual_field = np.linspace(-eccentricity, eccentricity, self.size_out)
+        degree_per_pixel = eccentricity / radius_in
+        
+        visual_field = np.linspace(-num_cells, num_cells, self.size_out)
         vf_x, vf_y = np.meshgrid(visual_field, visual_field)
         vf_x = np.reshape(vf_x, num_pixels_out)
         vf_y = np.reshape(vf_y, num_pixels_out)
@@ -51,7 +52,7 @@ class RetinalCompression:
 
         self.mask = vf_radius <= num_cells
 
-        new_radius = self.fii(vf_radius) / cells_per_pixel
+        new_radius = self.fii(vf_radius) / degree_per_pixel
 
         new_x = np.multiply(np.cos(vf_angle), new_radius) + radius_in
         new_y = np.multiply(np.sin(vf_angle), new_radius) + radius_in
@@ -73,16 +74,21 @@ class RetinalCompression:
             self.W[i, c] = dist[idx] / sum(dist[idx])
     
     def distort_image(self, image):
-        try:
-            depth =  np.size(img, axis=2) # Determine dimensions of the selected image (pixel space)
-        except:
-            depth = None
+        
+        if len(image.shape)==3:
+            depth =  np.size(image, axis=2) # Determine dimensions of the selected image (pixel space)
 
-        if depth:
+            msk = np.tile(self.mask, (depth,1)).transpose()
+
             image = np.reshape(image, (self.num_pixels_in, depth))
-            output = np.reshape(np.dot(self.W, image), (self.size_out, self.size_out, depth)).astype(np.uint8)
+            output = np.multiply(sparse.dot(self.W, image), msk)
+            output = np.reshape(output, (self.size_out, self.size_out, depth)).astype(np.uint8)
         else:
-            output = np.reshape(np.dot(self.W, image), (self.size_out, self.size_out)).astype(np.uint8)
+            image = np.reshape(image, (self.num_pixels_in))
+            output = np.multiply(sparse.dot(self.W, image), self.mask)
+            output = np.reshape(output, (self.size_out, self.size_out)).astype(np.uint8)
+
+            
 
         return output
 
