@@ -33,8 +33,8 @@ class RetinalCompression:
         eccentricity = parameters['field_of_view'] / 2
         radius_in = parameters['resolution_in'] / 2
 
-        self.num_pixels_in = parameters['size_in']**2
-        self.size_out = parameters['size_out']
+        self.num_pixels_in = parameters['resolution_in']**2
+        self.size_out = parameters['resolution_out']
         num_pixels_out = self.size_out**2
 
         num_cells = self.fi(eccentricity)
