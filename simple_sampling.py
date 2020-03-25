@@ -73,22 +73,41 @@ class RetinalCompression:
             dist = np.reshape(np.array([np.abs(x - new_x[i]), np.abs(y - new_y[i])]), 4)
             self.W[i, c] = dist[idx] / sum(dist[idx])
     
+    
+    @staticmethod
+    def __adjust_image_dims__(image):
+        if len(image.shape)==2:
+            image = np.expand_dims(image, axis = 2)
+            image = np.tile(image,[1,1,3])
+        
+        [height, width, depth] = image.shape    
+        ratio = height / width
+        mval = max(width, height)
+        
+        output = np.zeros((mval, mval, depth), dtype=np.uint8)
+        if ratio > 1:
+            difference = height - width
+            half_diff = int(difference / 2)
+            output[:, half_diff:(mval - half_diff), :] = image  
+        elif ratio < 1:
+            difference = width - height
+            half_diff = int(difference / 2)
+            output[half_diff:(mval - half_diff), :, :] = image
+        else:
+            output = image
+
+        return output
+
+    
     def distort_image(self, image):
         
-        if len(image.shape)==3:
-            depth =  np.size(image, axis=2) # Determine dimensions of the selected image (pixel space)
+        image = self.__adjust_image_dims__(image)
 
-            msk = np.tile(self.mask, (depth,1)).transpose()
+        msk = np.tile(self.mask, (3,1)).transpose()
 
-            image = np.reshape(image, (self.num_pixels_in, depth))
-            output = np.multiply(sparse.dot(self.W, image), msk)
-            output = np.reshape(output, (self.resolution_out, self.resolution_out, depth)).astype(np.uint8)
-        else:
-            image = np.reshape(image, (self.num_pixels_in))
-            output = np.multiply(sparse.dot(self.W, image), self.mask)
-            output = np.reshape(output, (self.resolution_out, self.resolution_out)).astype(np.uint8)
-
-            
+        image = np.reshape(image, (self.num_pixels_in, 3))
+        output = np.multiply(sparse.dot(self.W, image), msk)
+        output = np.reshape(output, (self.resolution_out, self.resolution_out, 3)).astype(np.uint8)
 
         return output
 
