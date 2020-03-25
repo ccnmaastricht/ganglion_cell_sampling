@@ -31,8 +31,8 @@ class RetinalCompression:
         # Arguments:
         #     parameters = dictionary
        
-        eccentricity = parameters['field_of_view'] / 2
-        radius_in = parameters['resolution_in'] / 2
+        eccentricity = parameters['field_of_view'] / 2.
+        radius_in = parameters['resolution_in'] / 2.
 
         self.resolution_in = parameters['resolution_in']
         self.resolution_out = parameters['resolution_out']
@@ -87,11 +87,11 @@ class RetinalCompression:
         output = np.zeros((mval, mval, depth), dtype=np.uint8)
         if ratio > 1:
             difference = height - width
-            half_diff = int(difference / 2)
+            half_diff = int(difference / 2.)
             output[:, half_diff:(mval - half_diff), :] = image  
         elif ratio < 1:
             difference = width - height
-            half_diff = int(difference / 2)
+            half_diff = int(difference / 2.)
             output[half_diff:(mval - half_diff), :, :] = image
         else:
             output = image
