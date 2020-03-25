@@ -50,7 +50,8 @@ class RetinalCompression:
         vf_angle = np.angle(vf_x + vf_y * 1j)
         vf_radius = np.abs(vf_x + vf_y * 1j)
 
-        self.mask = vf_radius <= num_cells
+        mask = vf_radius <= num_cells
+        self.mask = np.tile(mask, (3,1)).transpose()
 
         new_radius = self.fii(vf_radius) / degree_per_pixel
 
@@ -102,11 +103,8 @@ class RetinalCompression:
     def distort_image(self, image):
         
         image = self.__adjust_image_dims__(image)
-
-        msk = np.tile(self.mask, (3,1)).transpose()
-
         image = np.reshape(image, (self.num_pixels_in, 3))
-        output = np.multiply(sparse.dot(self.W, image), msk)
+        output = np.multiply(sparse.dot(self.W, image), self.mask)
         output = np.reshape(output, (self.resolution_out, self.resolution_out, 3)).astype(np.uint8)
 
         return output
