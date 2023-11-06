@@ -1,4 +1,4 @@
-![](https://img.shields.io/github/license/ccnmaastricht/ganglion_cell_sampling))
+![](https://img.shields.io/github/license/ccnmaastricht/ganglion_cell_sampling)
 ![](https://img.shields.io/github/issues/ccnmaastricht/ganglion_cell_sampling)
 ![](https://img.shields.io/github/forks/ccnmaastricht/ganglion_cell_sampling)
 ![](https://img.shields.io/github/stars/ccnmaastricht/ganglion_cell_sampling)
