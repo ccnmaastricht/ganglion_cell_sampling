@@ -11,12 +11,15 @@ from scipy.special import lambertw
 
 
 class RetinalCompression:
+
     def __init__(self):
         self.a = .98  # The weighting of the first term in the original equation
         self.r2 = 1.05  # The eccentricity at which density is reduced by a factor of four (and spacing is doubled)
         self.re = 22  # Scale factor of the exponential. Not used in our version.
         self.dg = 33162  # Cell density at r = 0
-        self.C = (3.4820e+04 + .1)  # Constant added to the integral to make sure that if x == 0, y == 0.
+        self.C = (
+            3.4820e+04 + .1
+        )  # Constant added to the integral to make sure that if x == 0, y == 0.
         self.inS, self.inR, self.inC, self.inD = int, int, int, int  # Dimensions of the selected image (pixel space)
         self.bg_color = 127  # Background color for the generated image.
         self.W = None  # Placeholder for spare matrix used for image transformation when using series_dist method
@@ -25,11 +28,13 @@ class RetinalCompression:
     def fi(self, r):
         # Integrated Ganglion Density formula (3), taken from Watson (2014). Maps from degrees of visual angle to the
         # amount of cells.
-        return self.C - np.divide((np.multiply(self.dg, self.r2 ** 2)), (r + self.r2))
+        return self.C - np.divide((np.multiply(self.dg, self.r2**2)),
+                                  (r + self.r2))
 
     def fii(self, r):
         # Inverted integrated Ganglion Density formula (3), taken from Watson (2014).
-        return np.divide(np.multiply(self.dg, self.r2 ** 2), (self.C - r)) - self.r2
+        return np.divide(np.multiply(self.dg, self.r2**2),
+                         (self.C - r)) - self.r2
 
     @staticmethod
     def cones(r):
@@ -37,11 +42,13 @@ class RetinalCompression:
 
     @staticmethod
     def cones_i(r):
-        return 11.5 * r - 266.666666666667 * np.exp(-0.75 * r) + 266.666666666667
+        return 11.5 * r - 266.666666666667 * np.exp(
+            -0.75 * r) + 266.666666666667
 
     @staticmethod
     def cones_ii(r):
-        return (2*r)/23 + (4*lambertw((400*np.exp(400/23 - (3*r)/46))/23, k=0))/3 - 1600/69
+        return (2 * r) / 23 + (4 * lambertw(
+            (400 * np.exp(400 / 23 - (3 * r) / 46)) / 23, k=0)) / 3 - 1600 / 69
 
     @staticmethod
     def load_image(*im):
@@ -57,10 +64,12 @@ class RetinalCompression:
                 if not file:
                     print("No file selected")
                     raise SystemExit(0)
-            image = cv2.imread(file, 3)
+            image = cv2.imread(file, 3)[..., ::-1]
         except ValueError:
             image = im[0]
-        [r, c, d] = image.shape  # Determine dimensions of the selected image (pixel space)
+        [
+            r, c, d
+        ] = image.shape  # Determine dimensions of the selected image (pixel space)
         dif = r - c  # Determine the difference between rows and columns. Used for zero-padding of non-
         s = dif / 2
         if dif != 0:
@@ -88,10 +97,13 @@ class RetinalCompression:
         cv2.destroyAllWindows()
 
     @staticmethod
-    def save_im(out_path, f_name, im, col):
+    def save_im(out_path, f_name, im):
         if not os.path.exists(out_path):
             os.mkdir(out_path)
-        plt.imsave("{}{}".format(out_path, f_name), im, cmap='gray', vmin=0,
+        plt.imsave("{}{}".format(out_path, f_name),
+                   im,
+                   cmap='gray',
+                   vmin=0,
                    vmax=255)
 
     @staticmethod
@@ -105,7 +117,13 @@ class RetinalCompression:
             im2 = np.multiply(im, mask)
         return im2
 
-    def distort_image(self, image, fov=20, out_size=256, inv=0, type=1, series=0):
+    def distort_image(self,
+                      image,
+                      fov=20,
+                      out_size=256,
+                      inv=0,
+                      type=1,
+                      series=0):
         # Arguments:
         #     image = array_like
         #               Numpy array containing an image, containing a link to an image, or is empty.
@@ -144,12 +162,18 @@ class RetinalCompression:
         if (self.W is None) or (series == 0):
 
             try:
-                [self.inR, self.inC, self.inD] = image.shape  # Determine dimensions of the selected image (pixel space)
+                [
+                    self.inR, self.inC, self.inD
+                ] = image.shape  # Determine dimensions of the selected image (pixel space)
             except:
                 #image = np.repeat(image[:, :, np.newaxis], 3, axis=2)
-                [self.inR, self.inC] = image.shape  # Determine dimensions of the selected image (pixel space)
+                [
+                    self.inR, self.inC
+                ] = image.shape  # Determine dimensions of the selected image (pixel space)
                 self.inD = None
-            self.inS = max(self.inR, self.inC)  # Determine the largest dimension of the image
+            self.inS = max(
+                self.inR,
+                self.inC)  # Determine the largest dimension of the image
 
             # Parameter e represents the radius of visual field coverage (visual angle).
             e = fov / 2
@@ -189,8 +213,8 @@ class RetinalCompression:
                 t = np.linspace(-e, e, num=out_size)
 
             x, y = np.meshgrid(t, t)
-            x = np.reshape(x, out_size ** 2)
-            y = np.reshape(y, out_size ** 2)
+            x = np.reshape(x, out_size**2)
+            y = np.reshape(y, out_size**2)
 
             # For every pixel, calculate its angle, and radius.
             ang = np.angle(x + y * 1j)
@@ -226,19 +250,26 @@ class RetinalCompression:
             # The method used for image conversion. A sparse matrix that maps every pixel in the old image, to each
             # pixel in the new image via inverse mapping, is used.
             # Build a spare matrix for image conversion.
-            W = sparse((out_size ** 2, self.inS ** 2), dtype=np.float)
+            W = sparse((out_size**2, self.inS**2), dtype=np.float32)
             # Sometimes division by 0 might happen. This line makes sure the user won't see a warning when this happens.
             np.seterr(divide='ignore', invalid='ignore')
-            for i in range(out_size ** 2):
+            for i in range(out_size**2):
                 # Pixel indices will almost always not be a perfect integer value. Therefore, the value of the new pixel
                 # is value is determined by taking the average of all pixels involved. E.g. a value of 4.3 is converted
                 # to the indices 4, and 5. The RGB values are weighted accordingly (0.7 for index 4, and 0.3 for index
                 # 5). Additionally, boundary checking is used. Values can never be smaller than 0, or larger than the
                 # maximum index of the image.
-                x = np.minimum(np.maximum([math.floor(y_n[i]), math.ceil(y_n[i])], 0), self.inS - 1)
-                y = np.minimum(np.maximum([math.floor(x_n[i]), math.ceil(x_n[i])], 0), self.inS - 1)
-                c, idx = np.unique([x[0] * self.inS + y, x[1] * self.inS + y], return_index=True)
-                dist = np.reshape(np.array([np.abs(x - x_n[i]), np.abs(y - y_n[i])]), 4)
+                x = np.minimum(
+                    np.maximum([math.floor(y_n[i]),
+                                math.ceil(y_n[i])], 0), self.inS - 1)
+                y = np.minimum(
+                    np.maximum([math.floor(x_n[i]),
+                                math.ceil(x_n[i])], 0), self.inS - 1)
+                c, idx = np.unique([x[0] * self.inS + y, x[1] * self.inS + y],
+                                   return_index=True)
+                dist = np.reshape(
+                    np.array([np.abs(x - x_n[i]),
+                              np.abs(y - y_n[i])]), 4)
                 W[i, c] = dist[idx] / sum(dist[idx])
             if series == 1:
                 self.W = W
@@ -247,25 +278,40 @@ class RetinalCompression:
             msk = []
         # Vectorize the image
         if self.inD:
-            image = np.reshape(image, (self.inS ** 2, self.inD))
+            image = np.reshape(image, (self.inS**2, self.inD))
         else:
             self.inD = 0
-            image = np.reshape(image, self.inS ** 2)
+            image = np.reshape(image, self.inS**2)
         # Sparse matrix multiplication with the original input image to build the new image.
         if series == 1:
             W = self.W
             msk = self.msk
         if self.inD:
-            output = np.reshape(W.dot(image), (out_size, out_size, self.inD)).astype(np.uint8)
+            output = np.reshape(
+                W.dot(image), (out_size, out_size, self.inD)).astype(np.uint8)
         else:
             output = np.reshape(W.dot(image), (out_size, out_size))
         return output, msk
 
-    def single(self, image=None, out_path=None, fov=20, out_size=256, inv=0, type=1, show=1, masking=1, series=0):
+    def single(self,
+               image=None,
+               out_path=None,
+               fov=20,
+               out_size=256,
+               inv=0,
+               type=1,
+               show=1,
+               masking=1,
+               series=0):
         image = self.load_image(image)
         if show == 1:
             self.show_image(image)
-        im2, msk = self.distort_image(image=image, fov=fov, out_size=out_size, inv=inv, type=type, series=series)
+        im2, msk = self.distort_image(image=image,
+                                      fov=fov,
+                                      out_size=out_size,
+                                      inv=inv,
+                                      type=type,
+                                      series=series)
         if masking == 1:
             im3 = self.mask(im2, msk)
         if show == 1:
@@ -274,19 +320,32 @@ class RetinalCompression:
             self.save_im(im3, 'output.jpg', im3)
         return im3
 
-    def series(self, in_path, out_path, fov=20, out_size=256, inv=0, type=1, show=0, masking=1, series=1):
+    def series(self,
+               in_path,
+               out_path,
+               fov=20,
+               out_size=256,
+               inv=0,
+               type=1,
+               show=0,
+               masking=1,
+               series=1):
         for i, f_name in enumerate(os.listdir(in_path)):
-            print(" Working on image ", i+1)
+            print(" Working on image ", i + 1)
             file = in_path + '/' + f_name
             img = RetinalCompression.load_image(file)
             if show == 1:
                 RetinalCompression.show_image(img)
-            img2, msk = RetinalCompression.distort_image(self, image=img, fov=fov, out_size=out_size, inv=inv,
-                                                         type=type, series=series)
+            img2, msk = RetinalCompression.distort_image(self,
+                                                         image=img,
+                                                         fov=fov,
+                                                         out_size=out_size,
+                                                         inv=inv,
+                                                         type=type,
+                                                         series=series)
             if show == 1:
                 RetinalCompression.show_image(img2)
             if masking == 1:
                 img2 = RetinalCompression.mask(img2, msk)
             print("{}/{}".format(out_path, f_name))
             self.save_im(out_path, f_name, img2)
-
