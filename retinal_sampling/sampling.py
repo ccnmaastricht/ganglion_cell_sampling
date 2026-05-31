@@ -1,4 +1,4 @@
-"""Retinal compression via ganglion-cell (or cone) density mapping.
+"""Retinal sampling via ganglion-cell (or cone) density mapping.
 
 The algorithm maps each output pixel to its source location in the input via
 inverse mapping through the integrated cell-density function, then applies
@@ -6,9 +6,9 @@ precomputed bilinear interpolation.
 
 The three-stage pipeline:
 
-    intermediate = rca.compress(image)           # full circular mapping
-    output       = rca.crop(intermediate)        # remove empty corners
-    preview      = rca.decompress(intermediate)  # invert for visualisation
+    intermediate = sampler.compress(image)           # full circular mapping
+    output       = sampler.crop(intermediate)        # remove empty corners
+    preview      = sampler.decompress(intermediate)  # invert for visualisation
 
 Keeping compress, crop, and decompress separate means decompress always
 receives the full intermediate (not a crop), so its coordinate map needs no
@@ -45,17 +45,17 @@ _DENSITY_FUNCTIONS: dict[str, tuple[Callable, Callable]] = {
 }
 
 
-class RetinalCompression:
+class RetinalSampler:
     """Biologically plausible retinal resampling based on cell-density distributions.
 
     Typical usage::
 
-        rca = RetinalCompression()
-        rca.build_mapping(input_size=512, output_size=256, fov=20.0)
+        sampler = RetinalSampler()
+        sampler.build_mapping(input_size=512, output_size=256, fov=20.0)
 
-        intermediate  = rca.compress(image)           # full circular mapping
-        compressed    = rca.crop(intermediate)        # remove empty corners → 256×256
-        reconstructed = rca.decompress(intermediate)  # invert for visualisation
+        intermediate  = sampler.compress(image)           # full circular mapping
+        compressed    = sampler.crop(intermediate)        # remove empty corners → 256×256
+        reconstructed = sampler.decompress(intermediate)  # invert for visualisation
 
     ``build_mapping`` is the expensive step; call it once per geometry and reuse
     across a batch.
